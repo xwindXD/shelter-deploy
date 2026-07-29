@@ -14,23 +14,24 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 20px;
 }
+.container { width: 480px; }
+
 .card {
     background: #16213e;
     border-radius: 16px;
     padding: 32px;
-    width: 420px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    margin-bottom: 16px;
 }
 h1 { font-size: 18px; text-align: center; margin-bottom: 20px; color: #e2e8f0; }
+h2 { font-size: 14px; color: #e2e8f0; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
 
-.input-group {
-    display: flex; gap: 8px; margin-bottom: 24px;
-}
+.input-group { display: flex; gap: 8px; margin-bottom: 24px; }
 .input-group input {
     flex: 1; padding: 10px 14px; border-radius: 8px;
-    border: 1px solid #334155; background: #0f172a; color: #fff;
-    font-size: 13px;
+    border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 13px;
 }
 .input-group input::placeholder { color: #64748b; }
 .input-group button {
@@ -60,10 +61,7 @@ h1 { font-size: 18px; text-align: center; margin-bottom: 20px; color: #e2e8f0; }
 }
 
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-.stat-box {
-    background: #0f172a; border-radius: 10px; padding: 14px;
-    text-align: center;
-}
+.stat-box { background: #0f172a; border-radius: 10px; padding: 14px; text-align: center; }
 .stat-box .label { font-size: 11px; color: #94a3b8; margin-bottom: 6px; }
 .stat-box .value { font-size: 18px; font-weight: bold; }
 .stat-box .value.green { color: #22c55e; }
@@ -89,10 +87,71 @@ h1 { font-size: 18px; text-align: center; margin-bottom: 20px; color: #e2e8f0; }
 }
 .save-row input[type="checkbox"] { cursor: pointer; }
 .save-row label { cursor: pointer; }
+
+/* 历史记录 */
+.history-card {
+    background: #16213e;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.history-actions { display: flex; gap: 8px; }
+.btn-sm {
+    padding: 4px 12px; border-radius: 6px; border: none;
+    font-size: 11px; cursor: pointer;
+}
+.btn-clear-all { background: #dc2626; color: #fff; }
+.btn-clear-all:hover { background: #b91c1c; }
+.btn-export-h { background: #3b82f6; color: #fff; }
+.btn-export-h:hover { background: #2563eb; }
+
+.history-list { max-height: 400px; overflow-y: auto; }
+
+.h-item {
+    background: #0f172a; border-radius: 10px; padding: 12px 14px;
+    margin-bottom: 8px; position: relative;
+    transition: background 0.2s;
+}
+.h-item:hover { background: #1e293b; }
+
+.h-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.h-time { font-size: 11px; color: #94a3b8; }
+.h-name { font-size: 11px; color: #64748b; margin-left: 8px; }
+.h-btns { display: flex; gap: 6px; }
+.h-btn {
+    padding: 3px 10px; border-radius: 4px; border: none;
+    font-size: 10px; cursor: pointer;
+}
+.h-btn-query { background: #3b82f6; color: #fff; }
+.h-btn-query:hover { background: #2563eb; }
+.h-btn-del { background: #475569; color: #cbd5e1; }
+.h-btn-del:hover { background: #dc2626; color: #fff; }
+
+.h-bars { display: flex; gap: 12px; align-items: center; }
+.h-mini-bar {
+    flex: 1; height: 8px; background: #1e293b;
+    border-radius: 4px; overflow: hidden;
+}
+.h-mini-fill { height: 100%; border-radius: 4px; }
+.h-mini-fill.green { background: #22c55e; }
+.h-mini-fill.warn { background: #f59e0b; }
+.h-mini-fill.danger { background: #ef4444; }
+
+.h-stats {
+    display: flex; gap: 16px; font-size: 11px; color: #94a3b8;
+}
+.h-stats .hs-val { color: #e2e8f0; font-weight: bold; }
+
+.h-empty { text-align: center; color: #475569; font-size: 12px; padding: 24px 0; }
+
+.h-diff { font-size: 10px; margin-left: 4px; }
+.h-diff.up { color: #ef4444; }
+.h-diff.down { color: #22c55e; }
 </style>
 </head>
 <body>
 
+<div class="container">
 <div class="card">
     <h1>API Token 用量查询</h1>
 
@@ -141,15 +200,122 @@ h1 { font-size: 18px; text-align: center; margin-bottom: 20px; color: #e2e8f0; }
     </div>
 </div>
 
+<div class="history-card">
+    <h2>
+        查询历史
+        <div class="history-actions">
+            <button class="btn-sm btn-export-h" onclick="exportHistory()">导出</button>
+            <button class="btn-sm btn-clear-all" onclick="clearHistory()">清空</button>
+        </div>
+    </h2>
+    <div class="history-list" id="historyList">
+        <div class="h-empty">暂无查询记录</div>
+    </div>
+</div>
+</div>
+
 <script>
 const saved = localStorage.getItem('api_key_token');
 if (saved) document.getElementById('apiKey').value = saved;
+
+let history = JSON.parse(localStorage.getItem('token_history') || '[]');
 
 function fmt(n) {
     if (n >= 1e9) return (n / 1e9).toFixed(2) + ' B';
     if (n >= 1e6) return (n / 1e6).toFixed(1) + ' M';
     if (n >= 1e3) return (n / 1e3).toFixed(1) + ' K';
     return n.toString();
+}
+
+function fmtDiff(curr, prev) {
+    if (!prev) return '';
+    const diff = curr - prev;
+    if (diff === 0) return '';
+    const arrow = diff > 0 ? '+' : '';
+    const cls = diff > 0 ? 'up' : 'down';
+    return `<span class="h-diff ${cls}">${arrow}${fmt(diff)}</span>`;
+}
+
+function saveHistory() {
+    localStorage.setItem('token_history', JSON.stringify(history));
+}
+
+function addToHistory(data) {
+    const now = new Date();
+    const record = {
+        time: now.toLocaleString('zh-CN'),
+        ts: now.getTime(),
+        name: data.name || '-',
+        used: data.total_used,
+        available: data.total_available,
+        granted: data.total_granted,
+        pct: data.total_granted > 0 ? (data.total_used / data.total_granted * 100) : 0,
+    };
+    history.unshift(record);
+    if (history.length > 50) history = history.slice(0, 50);
+    saveHistory();
+    renderHistory();
+}
+
+function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (!history.length) {
+        list.innerHTML = '<div class="h-empty">暂无查询记录</div>';
+        return;
+    }
+    list.innerHTML = history.map((h, i) => {
+        const prev = history[i + 1];
+        const usedDiff = prev ? fmtDiff(h.used, prev.used) : '';
+        const barCls = h.pct < 50 ? 'green' : h.pct < 80 ? 'warn' : 'danger';
+        return `<div class="h-item">
+            <div class="h-top">
+                <div>
+                    <span class="h-time">${h.time}</span>
+                    <span class="h-name">${h.name}</span>
+                </div>
+                <div class="h-btns">
+                    <button class="h-btn h-btn-query" onclick="requery(${i})">查询</button>
+                    <button class="h-btn h-btn-del" onclick="delRecord(${i})">删除</button>
+                </div>
+            </div>
+            <div class="h-bars">
+                <div class="h-mini-bar"><div class="h-mini-fill ${barCls}" style="width:${h.pct}%"></div></div>
+                <span style="font-size:11px;color:#94a3b8;min-width:45px;text-align:right">${h.pct.toFixed(1)}%</span>
+            </div>
+            <div class="h-stats" style="margin-top:6px">
+                <div>已用 <span class="hs-val">${fmt(h.used)}</span>${usedDiff}</div>
+                <div>剩余 <span class="hs-val">${fmt(h.available)}</span></div>
+                <div>总量 <span class="hs-val">${fmt(h.granted)}</span></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function delRecord(i) {
+    history.splice(i, 1);
+    saveHistory();
+    renderHistory();
+}
+
+function clearHistory() {
+    if (!confirm('确定清空全部查询历史？')) return;
+    history = [];
+    saveHistory();
+    renderHistory();
+}
+
+function exportHistory() {
+    if (!history.length) { alert('没有历史记录'); return; }
+    const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'token查询历史_' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+function requery() {
+    query();
 }
 
 async function query() {
@@ -200,6 +366,8 @@ async function query() {
         document.getElementById('queryTime').textContent = now.toLocaleString('zh-CN');
 
         document.getElementById('result').style.display = 'block';
+
+        addToHistory(d);
     } catch (e) {
         showError('网络错误: ' + e.message);
     } finally {
@@ -216,6 +384,8 @@ function showError(msg) {
 document.getElementById('apiKey').addEventListener('keydown', e => {
     if (e.key === 'Enter') query();
 });
+
+renderHistory();
 </script>
 </body>
 </html>

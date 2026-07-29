@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=750, initial-scale=1.0">
+<title>避难所房间槽位模拟</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #2a2a2a;
+    font-family: -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    color: #fff;
+}
+h1 { font-size: 18px; margin-bottom: 10px; }
+.info { font-size: 12px; color: #aaa; margin-bottom: 20px; text-align: center; }
+
+.phone-frame {
+    width: 750px;
+    height: 1650px;
+    background: #1a1a1a;
+    border: 3px solid #555;
+    border-radius: 40px;
+    overflow: hidden;
+    position: relative;
+}
+
+.top-bar {
+    width: 100%;
+    height: 90px;
+    background: linear-gradient(180deg, #3d2b1a, #2a1d0f);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 2px solid #5a3d1a;
+}
+.top-bar .back { font-size: 24px; cursor: pointer; }
+.top-bar .level-bar {
+    width: 300px;
+    height: 20px;
+    background: #1a1a1a;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #5a3d1a;
+}
+.top-bar .level-bar .fill {
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, #d4a843, #f0c060);
+    border-radius: 10px;
+}
+.top-bar .coin {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: #f0c060;
+}
+.top-bar .coin-icon {
+    width: 24px;
+    height: 24px;
+    background: #f0c060;
+    border-radius: 50%;
+    border: 2px solid #d4a843;
+}
+
+.scroll-area {
+    width: 100%;
+    height: 1560px;
+    overflow-y: auto;
+    background: #0d0d0d;
+}
+
+.connector {
+    width: 100%;
+    height: 100px;
+    background: linear-gradient(180deg, #2a1d0f, #1a1208);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top: 3px solid #3d2b1a;
+    border-bottom: 3px solid #3d2b1a;
+}
+.connector::before {
+    content: '';
+    position: absolute;
+    left: 80px;
+    top: 10px;
+    width: 40px;
+    height: 80px;
+    border: 2px solid #5a3d1a;
+    background: repeating-linear-gradient(0deg, transparent, transparent 14px, #5a3d1a 14px, #5a3d1a 16px);
+}
+.connector-label {
+    font-size: 11px;
+    color: #5a3d1a;
+    position: absolute;
+    right: 20px;
+    bottom: 8px;
+}
+
+.room {
+    width: 750px;
+    height: 420px;
+    position: relative;
+    border: 2px solid #5a3d1a;
+}
+.room.diy { background: linear-gradient(180deg, #f5e6d0, #f0dcc0, #e8d0b0, #d4b896); }
+.room.room3choose1 { background: linear-gradient(180deg, #e8ddd0, #e0d4c4, #d8cab8, #c8b8a4); }
+.room.locked {
+    background: linear-gradient(180deg, #3a3530, #2a2520, #1a1510, #0a0500);
+    opacity: 0.6;
+}
+
+.room-label {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 11px;
+    color: #8a7a6a;
+    background: rgba(0,0,0,0.3);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+/* 区域划分辅助线 */
+.zone {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    border-top: 1px dashed rgba(150,120,80,0.4);
+}
+.zone-label {
+    position: absolute;
+    left: 4px;
+    font-size: 9px;
+    color: rgba(150,120,80,0.6);
+    writing-mode: vertical-rl;
+}
+
+/* 槽位 */
+.slot {
+    position: absolute;
+    border: 2px dashed rgba(100,180,100,0.6);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: rgba(100,180,100,0.8);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(100,180,100,0.05);
+}
+.slot:hover {
+    border-color: rgba(100,220,100,0.9);
+    background: rgba(100,220,100,0.15);
+    transform: scale(1.02);
+}
+.slot.filled {
+    border-color: rgba(200,160,80,0.8);
+    background: rgba(200,160,80,0.1);
+    color: rgba(200,160,80,0.9);
+}
+
+/* 家具模拟 */
+.furniture {
+    position: absolute;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #fff;
+    text-align: center;
+}
+
+/* 尺寸标注 */
+.dimension {
+    position: absolute;
+    font-size: 10px;
+    color: #ff6b6b;
+}
+.dimension.horizontal {
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.dimension.vertical {
+    right: -40px;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+}
+
+/* 格子网格 */
+.grid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0.15;
+}
+
+.controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #333;
+    padding: 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    z-index: 100;
+    max-width: 220px;
+}
+.controls label {
+    display: block;
+    margin: 6px 0;
+    cursor: pointer;
+}
+.controls input[type="checkbox"] { margin-right: 6px; }
+.controls h3 { margin-bottom: 8px; font-size: 13px; color: #f0c060; }
+.controls .note { color: #888; font-size: 10px; margin-top: 8px; }
+
+.notes-panel {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 320px;
+    max-height: calc(100vh - 40px);
+    background: #333;
+    border-radius: 8px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #444;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    user-select: none;
+}
+.notes-header h3 { font-size: 13px; color: #f0c060; margin: 0; }
+.notes-header .toggle { font-size: 16px; transition: transform 0.2s; }
+.notes-header .toggle.collapsed { transform: rotate(-90deg); }
+.notes-body { display: flex; flex-direction: column; overflow: hidden; }
+.notes-body.hidden { display: none; }
+.notes-input-area { padding: 10px; border-bottom: 1px solid #555; }
+.notes-input-area input[type="text"] {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+.notes-input-area textarea {
+    width: 100%;
+    height: 60px;
+    padding: 8px 10px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 12px;
+    resize: vertical;
+    font-family: inherit;
+}
+.notes-input-area textarea::placeholder,
+.notes-input-area input::placeholder { color: #666; }
+.notes-btns { display: flex; gap: 6px; margin-top: 8px; }
+.notes-btns button {
+    flex: 1;
+    padding: 6px 0;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.notes-btns button:hover { opacity: 0.85; }
+.btn-add { background: #f0c060; color: #1a1a1a; font-weight: bold; }
+.btn-export { background: #5a9; color: #fff; }
+.btn-import { background: #68b; color: #fff; }
+.notes-list {
+    overflow-y: auto;
+    max-height: 400px;
+    padding: 8px;
+}
+.note-item {
+    background: #2a2a2a;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 6px;
+    position: relative;
+}
+.note-item .note-author { font-size: 11px; color: #f0c060; font-weight: bold; }
+.note-item .note-time { font-size: 10px; color: #777; margin-left: 8px; }
+.note-item .note-text { font-size: 12px; color: #ddd; margin-top: 4px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+.note-item .note-del {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+}
+.note-item .note-del:hover { color: #f66; }
+.notes-empty { text-align: center; color: #555; font-size: 12px; padding: 20px 0; }
+
+.legend {
+    display: flex;
+    gap: 16px;
+    margin: 16px 0;
+    font-size: 11px;
+    flex-wrap: wrap;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 2px dashed;
+}
+</style>
+</head>
+<body>
+
+<h1>避难所房间格子系统模拟 (750x1650)</h1>
+<div class="info">
+    房间尺寸: 750x420px | 连接件: 750x100px | 1格=100x100px | 一屏约3层<br>
+    绿色虚线=空槽位 | 金色虚线=已放家具的槽位
+</div>
+
+<div class="legend">
+    <div class="legend-item"><div class="legend-color" style="border-color: rgba(100,180,100,0.6);"></div>空槽位(可放家具)</div>
+    <div class="legend-item"><div class="legend-color" style="border-color: rgba(200,160,80,0.8); background: rgba(200,160,80,0.1);"></div>已放置家具</div>
+    <div class="legend-item"><div class="legend-color" style="border-color: #ff6b6b; border-style: solid;"></div>尺寸标注</div>
+</div>
+
+<div class="phone-frame">
+    <div class="top-bar">
+        <span class="back">←</span>
+        <div class="level-bar"><div class="fill"></div></div>
+        <div class="coin"><div class="coin-icon"></div>12,450</div>
+    </div>
+
+    <div class="scroll-area">
+        <!-- DIY房间 (第1层) -->
+        <div class="room diy" id="diy-room">
+            <div class="room-label">第1层 · DIY我的房间 · 750×420</div>
+
+            <!-- 区域分割线 -->
+            <div class="zone" style="top:60px;"><span class="zone-label" style="top:0;">天花板60px</span></div>
+            <div class="zone" style="top:200px;"><span class="zone-label" style="top:0;">墙面140px</span></div>
+            <div class="zone" style="top:360px;"><span class="zone-label" style="top:0;">地面160px</span></div>
+
+            <!-- 天花板槽位 -->
+            <div class="slot filled" style="left:180px; top:10px; width:100px; height:50px;">挂饰1<br>1×0.5格</div>
+            <div class="slot" style="left:420px; top:10px; width:100px; height:50px;">挂饰2<br>1×0.5格</div>
+
+            <!-- 墙面槽位 -->
+            <div class="slot filled" style="left:100px; top:80px; width:120px; height:120px;">墙面装饰<br>1×1格</div>
+            <div class="slot" style="left:500px; top:80px; width:120px; height:120px;">墙面装饰2<br>1×1格</div>
+
+            <!-- 地面槽位 -->
+            <div class="slot filled" style="left:40px; top:210px; width:200px; height:150px;">床<br>2×1.5格</div>
+            <div class="slot filled" style="left:250px; top:260px; width:100px; height:100px;">床头柜<br>1×1格</div>
+            <div class="slot" style="left:360px; top:240px; width:80px; height:120px;">绿植<br>0.8×1.2格</div>
+            <div class="slot filled" style="left:460px; top:210px; width:200px; height:150px;">家具1(沙发)<br>2×1.5格</div>
+
+            <!-- 地板 -->
+            <div class="slot filled" style="left:200px; top:365px; width:300px; height:50px;">地垫 3×0.5格</div>
+
+            <!-- 门装饰 -->
+            <div class="slot" style="left:680px; top:120px; width:60px; height:200px;">门<br>装饰</div>
+
+            <!-- 尺寸标注 -->
+            <div class="dimension horizontal" style="top:418px; left:375px; color:#ff6b6b; font-size:11px;">← 750px →</div>
+        </div>
+
+        <!-- 连接件 -->
+        <div class="connector">
+            <span class="connector-label">连接件 750×100</span>
+        </div>
+
+        <!-- 3选1房间 (第2层) -->
+        <div class="room room3choose1">
+            <div class="room-label">第2层 · 3选1房间 · 750×420</div>
+
+            <div class="zone" style="top:60px;"></div>
+            <div class="zone" style="top:200px;"></div>
+            <div class="zone" style="top:360px;"></div>
+
+            <!-- 示意一些已装修的家具 -->
+            <div class="slot filled" style="left:200px; top:10px; width:100px; height:50px;">吊灯</div>
+            <div class="slot filled" style="left:80px; top:80px; width:150px; height:120px;">书架<br>1.5×1.2格</div>
+            <div class="slot filled" style="left:300px; top:100px; width:100px; height:100px;">挂画</div>
+            <div class="slot filled" style="left:50px; top:220px; width:200px; height:140px;">桌椅组合<br>2×1.4格</div>
+            <div class="slot filled" style="left:280px; top:250px; width:100px; height:110px;">绿植</div>
+            <div class="slot filled" style="left:420px; top:210px; width:200px; height:150px;">钢琴<br>2×1.5格</div>
+            <div class="slot filled" style="left:150px; top:365px; width:350px; height:50px;">地毯</div>
+        </div>
+
+        <!-- 连接件 -->
+        <div class="connector">
+            <span class="connector-label">连接件 750×100</span>
+        </div>
+
+        <!-- 第3层 (未解锁) -->
+        <div class="room locked">
+            <div class="room-label" style="color:#555;">第3层 · 🔒未解锁</div>
+            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:48px; opacity:0.3;">🔒</div>
+        </div>
+
+        <!-- 连接件 -->
+        <div class="connector">
+            <span class="connector-label">连接件 750×100</span>
+        </div>
+
+        <!-- 第4层 (未解锁) -->
+        <div class="room locked">
+            <div class="room-label" style="color:#555;">第4层 · 🔒未解锁</div>
+            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:48px; opacity:0.3;">🔒</div>
+        </div>
+    </div>
+</div>
+
+<div class="notes-panel">
+    <div class="notes-header" onclick="toggleNotes()">
+        <h3>备注区</h3>
+        <span class="toggle" id="notesToggle">▼</span>
+    </div>
+    <div class="notes-body" id="notesBody">
+        <div class="notes-input-area">
+            <input type="text" id="noteAuthor" placeholder="你的名字（如：策划-小张）" />
+            <textarea id="noteText" placeholder="输入备注内容…"></textarea>
+            <div class="notes-btns">
+                <button class="btn-add" onclick="addNote()">添加备注</button>
+                <button class="btn-export" onclick="exportNotes()">导出</button>
+                <button class="btn-import" onclick="document.getElementById('importFile').click()">导入</button>
+                <input type="file" id="importFile" accept=".json" style="display:none" onchange="importNotes(event)">
+            </div>
+        </div>
+        <div class="notes-list" id="notesList">
+            <div class="notes-empty">暂无备注</div>
+        </div>
+    </div>
+</div>
+
+<div class="controls">
+    <h3>参数说明</h3>
+    <div>屏幕: 750×1650</div>
+    <div>顶栏: 90px</div>
+    <div>房间: 750×420px</div>
+    <div>连接件: 750×100px</div>
+    <div>每层总高: 520px</div>
+    <div>一屏可见: ~3层</div>
+    <div>1格基础: 100×100px</div>
+    <div style="margin-top:12px; border-top:1px solid #555; padding-top:8px;">
+        <strong>地面区实际可用:</strong><br>
+        宽: ~650px (留门位)<br>
+        高: 160px<br>
+        可放: 大件×2 + 小件×2<br>
+        或: 大件×1 + 小件×4
+    </div>
+    <div class="note">
+        绿色虚线框=槽位<br>
+        鼠标悬停可高亮<br>
+        实际手指点击最小约9mm
+    </div>
+</div>
+
+<script>
+let notes = JSON.parse(localStorage.getItem('shelter_notes') || '[]');
+const savedAuthor = localStorage.getItem('shelter_author') || '';
+if (savedAuthor) document.getElementById('noteAuthor').value = savedAuthor;
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function renderNotes() {
+    const list = document.getElementById('notesList');
+    if (!notes.length) { list.innerHTML = '<div class="notes-empty">暂无备注</div>'; return; }
+    list.innerHTML = notes.map((n, i) =>
+        `<div class="note-item">
+            <span class="note-author">${esc(n.author)}</span>
+            <span class="note-time">${n.time}</span>
+            <button class="note-del" onclick="delNote(${i})" title="删除">×</button>
+            <div class="note-text">${esc(n.text)}</div>
+        </div>`
+    ).join('');
+    list.scrollTop = list.scrollHeight;
+}
+
+function addNote() {
+    const authorEl = document.getElementById('noteAuthor');
+    const textEl = document.getElementById('noteText');
+    const text = textEl.value.trim();
+    if (!text) return;
+    const author = authorEl.value.trim() || '匿名';
+    localStorage.setItem('shelter_author', author);
+    const now = new Date();
+    const time = now.getFullYear() + '-' +
+        String(now.getMonth()+1).padStart(2,'0') + '-' +
+        String(now.getDate()).padStart(2,'0') + ' ' +
+        String(now.getHours()).padStart(2,'0') + ':' +
+        String(now.getMinutes()).padStart(2,'0');
+    notes.push({ author, text, time });
+    localStorage.setItem('shelter_notes', JSON.stringify(notes));
+    textEl.value = '';
+    renderNotes();
+}
+
+function delNote(i) {
+    notes.splice(i, 1);
+    localStorage.setItem('shelter_notes', JSON.stringify(notes));
+    renderNotes();
+}
+
+function exportNotes() {
+    if (!notes.length) { alert('没有备注可导出'); return; }
+    const blob = new Blob([JSON.stringify(notes, null, 2)], {type: 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '避难所备注_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+function importNotes(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        try {
+            const imported = JSON.parse(ev.target.result);
+            if (!Array.isArray(imported)) throw 0;
+            const before = notes.length;
+            imported.forEach(n => {
+                if (n.text && n.time) notes.push({ author: n.author||'匿名', text: n.text, time: n.time });
+            });
+            localStorage.setItem('shelter_notes', JSON.stringify(notes));
+            renderNotes();
+            alert('导入成功，新增 ' + (notes.length - before) + ' 条备注');
+        } catch { alert('文件格式错误，请选择导出的JSON文件'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+}
+
+function toggleNotes() {
+    const body = document.getElementById('notesBody');
+    const toggle = document.getElementById('notesToggle');
+    body.classList.toggle('hidden');
+    toggle.classList.toggle('collapsed');
+}
+
+document.getElementById('noteText').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(); }
+});
+
+renderNotes();
+</script>
+
+</body>
+</html>

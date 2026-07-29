@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>避难所槽位编辑器</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a1a; font-family: -apple-system, sans-serif; color: #fff; display: flex; }
+
+.toolbar {
+    position: fixed; left: 0; top: 0; width: 240px; height: 100vh;
+    background: #2a2a2a; padding: 16px; overflow-y: auto; z-index: 200;
+    border-right: 2px solid #444;
+}
+.toolbar h2 { font-size: 14px; color: #f0c060; margin-bottom: 12px; }
+.toolbar h3 { font-size: 12px; color: #aaa; margin: 12px 0 6px; }
+.tb-btn {
+    display: block; width: 100%; padding: 8px; margin: 4px 0;
+    border: 1px solid #555; border-radius: 6px; background: #333;
+    color: #fff; font-size: 11px; cursor: pointer; text-align: left;
+}
+.tb-btn:hover { background: #444; border-color: #f0c060; }
+.tb-btn .size { color: #888; font-size: 10px; }
+.tb-section { border-top: 1px solid #444; padding-top: 8px; margin-top: 8px; }
+
+.tb-row { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
+.tb-row label { font-size: 11px; min-width: 50px; }
+.tb-row input { width: 60px; padding: 4px; background: #1a1a1a; border: 1px solid #555; border-radius: 4px; color: #fff; font-size: 11px; }
+.tb-row select { padding: 4px; background: #1a1a1a; border: 1px solid #555; border-radius: 4px; color: #fff; font-size: 11px; }
+
+.tb-check { display: flex; align-items: center; gap: 6px; margin: 6px 0; font-size: 11px; cursor: pointer; }
+.tb-check input { cursor: pointer; }
+
+.action-btn {
+    display: block; width: 100%; padding: 8px; margin: 4px 0;
+    border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: bold;
+}
+.btn-export-layout { background: #5a9; color: #fff; }
+.btn-import-layout { background: #68b; color: #fff; }
+.btn-clear { background: #a55; color: #fff; }
+
+#slotInfo {
+    background: #1a1a1a; border-radius: 6px; padding: 10px; margin-top: 8px;
+    font-size: 11px; line-height: 1.6; min-height: 60px;
+}
+#slotInfo .val { color: #f0c060; }
+
+.canvas-area {
+    margin-left: 240px; padding: 20px; display: flex; flex-direction: column; align-items: center;
+}
+.canvas-area h1 { font-size: 16px; margin-bottom: 8px; }
+.canvas-area .hint { font-size: 11px; color: #888; margin-bottom: 16px; }
+
+.room-canvas {
+    width: 750px; height: 420px; position: relative;
+    background: linear-gradient(180deg, #f5e6d0, #f0dcc0, #e8d0b0, #d4b896);
+    border: 2px solid #5a3d1a;
+}
+
+.grid-lines {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 1;
+}
+
+.zone-line {
+    position: absolute; left: 0; width: 100%;
+    border-top: 1px dashed rgba(150,120,80,0.5);
+    pointer-events: none; z-index: 2;
+}
+.zone-line span {
+    position: absolute; left: 6px; top: 2px;
+    font-size: 10px; color: rgba(150,120,80,0.7);
+}
+
+.drag-slot {
+    position: absolute; border: 2px dashed rgba(100,180,100,0.7);
+    border-radius: 6px; cursor: move; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: rgba(100,180,100,0.9); text-align: center;
+    background: rgba(100,180,100,0.08); user-select: none;
+}
+.drag-slot:hover { border-color: rgba(100,255,100,0.9); background: rgba(100,255,100,0.15); }
+.drag-slot.selected { border-color: #f0c060; border-style: solid; background: rgba(240,192,96,0.15); color: #f0c060; z-index: 20; }
+.drag-slot.dragging { opacity: 0.7; }
+
+.resize-handle {
+    position: absolute; right: -4px; bottom: -4px;
+    width: 10px; height: 10px; background: #f0c060;
+    border-radius: 2px; cursor: nwse-resize; z-index: 30;
+}
+
+.drag-slot .del-btn {
+    position: absolute; top: -8px; right: -8px;
+    width: 16px; height: 16px; background: #e55; color: #fff;
+    border: none; border-radius: 50%; font-size: 10px; line-height: 16px;
+    text-align: center; cursor: pointer; display: none; z-index: 31;
+}
+.drag-slot.selected .del-btn { display: block; }
+
+.coord-label {
+    position: absolute; bottom: 2px; right: 4px;
+    font-size: 8px; color: rgba(100,180,100,0.5); pointer-events: none;
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+    <h2>槽位编辑器</h2>
+
+    <h3>添加槽位</h3>
+    <button class="tb-btn" onclick="addSlot('天花板挂饰', 100, 50, 'ceiling')">天花板挂饰 <span class="size">100x50</span></button>
+    <button class="tb-btn" onclick="addSlot('墙面装饰', 120, 120, 'wall')">墙面装饰 <span class="size">120x120</span></button>
+    <button class="tb-btn" onclick="addSlot('大件家具', 200, 150, 'floor')">大件家具 <span class="size">200x150</span></button>
+    <button class="tb-btn" onclick="addSlot('小件家具', 100, 100, 'floor')">小件家具 <span class="size">100x100</span></button>
+    <button class="tb-btn" onclick="addSlot('绿植', 80, 120, 'floor')">绿植 <span class="size">80x120</span></button>
+    <button class="tb-btn" onclick="addSlot('地垫', 300, 50, 'ground')">地垫 <span class="size">300x50</span></button>
+    <button class="tb-btn" onclick="addSlot('门装饰', 60, 200, 'door')">门装饰 <span class="size">60x200</span></button>
+    <button class="tb-btn" onclick="addSlot('自定义', 100, 100, 'floor')">自定义尺寸 <span class="size">100x100</span></button>
+
+    <div class="tb-section">
+        <h3>选中槽位属性</h3>
+        <div class="tb-row"><label>名称</label><input id="propName" oninput="updateProp()"></div>
+        <div class="tb-row"><label>宽</label><input id="propW" type="number" oninput="updateProp()"><label>高</label><input id="propH" type="number" oninput="updateProp()"></div>
+        <div class="tb-row"><label>X</label><input id="propX" type="number" oninput="updateProp()"><label>Y</label><input id="propY" type="number" oninput="updateProp()"></div>
+        <div class="tb-row">
+            <label>类型</label>
+            <select id="propType" onchange="updateProp()">
+                <option value="ceiling">ceiling 天花板</option>
+                <option value="wall">wall 墙面</option>
+                <option value="floor">floor 地面</option>
+                <option value="ground">ground 地板</option>
+                <option value="door">door 门</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="tb-section">
+        <h3>显示</h3>
+        <label class="tb-check"><input type="checkbox" id="showGrid" checked onchange="toggleGrid()">显示网格 (100px)</label>
+        <label class="tb-check"><input type="checkbox" id="snapGrid" checked>吸附网格 (10px)</label>
+        <label class="tb-check"><input type="checkbox" id="showZones" checked onchange="toggleZones()">显示区域线</label>
+    </div>
+
+    <div class="tb-section">
+        <h3>操作</h3>
+        <button class="action-btn btn-export-layout" onclick="exportLayout()">导出布局 JSON</button>
+        <button class="action-btn btn-import-layout" onclick="document.getElementById('layoutFile').click()">导入布局 JSON</button>
+        <input type="file" id="layoutFile" accept=".json" style="display:none" onchange="importLayout(event)">
+        <button class="action-btn btn-clear" onclick="clearAll()">清空全部</button>
+    </div>
+
+    <div class="tb-section">
+        <h3>当前布局</h3>
+        <div id="slotInfo">共 0 个槽位</div>
+    </div>
+</div>
+
+<div class="canvas-area">
+    <h1>DIY房间槽位布局 (750 x 420)</h1>
+    <div class="hint">点击左侧按钮添加槽位 | 拖拽移动 | 右下角拖拽调整大小 | 点选后可在左侧修改属性 | Delete键删除</div>
+    <div class="room-canvas" id="roomCanvas">
+        <svg class="grid-lines" id="gridSvg"></svg>
+        <div class="zone-line" style="top:60px;"><span>天花板 60px</span></div>
+        <div class="zone-line" style="top:200px;"><span>墙面 200px</span></div>
+        <div class="zone-line" style="top:360px;"><span>地面 360px</span></div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('roomCanvas');
+const ROOM_W = 750, ROOM_H = 420;
+let slots = [];
+let selected = null;
+let slotId = 0;
+
+const typeColors = {
+    ceiling: 'rgba(100,200,255,0.7)',
+    wall: 'rgba(200,100,255,0.7)',
+    floor: 'rgba(100,200,100,0.7)',
+    ground: 'rgba(200,180,100,0.7)',
+    door: 'rgba(255,150,100,0.7)',
+};
+
+function drawGrid() {
+    const svg = document.getElementById('gridSvg');
+    let lines = '';
+    for (let x = 0; x <= ROOM_W; x += 100) {
+        lines += `<line x1="${x}" y1="0" x2="${x}" y2="${ROOM_H}" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>`;
+    }
+    for (let y = 0; y <= ROOM_H; y += 100) {
+        lines += `<line x1="0" y1="${y}" x2="${ROOM_W}" y2="${y}" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>`;
+    }
+    svg.innerHTML = lines;
+}
+drawGrid();
+
+function toggleGrid() { document.getElementById('gridSvg').style.display = document.getElementById('showGrid').checked ? '' : 'none'; }
+function toggleZones() {
+    const show = document.getElementById('showZones').checked;
+    document.querySelectorAll('.zone-line').forEach(z => z.style.display = show ? '' : 'none');
+}
+
+function snap(v) { return document.getElementById('snapGrid').checked ? Math.round(v / 10) * 10 : v; }
+
+function addSlot(name, w, h, type) {
+    const id = ++slotId;
+    const x = snap(Math.random() * (ROOM_W - w));
+    const y = snap(type === 'ceiling' ? 10 : type === 'wall' ? 80 : type === 'ground' ? 365 : 220);
+    const slot = { id, name, x, y, w, h, type };
+    slots.push(slot);
+    createSlotEl(slot);
+    selectSlot(slot);
+    updateInfo();
+    saveToLocal();
+}
+
+function createSlotEl(slot) {
+    const el = document.createElement('div');
+    el.className = 'drag-slot';
+    el.dataset.id = slot.id;
+    applySlotStyle(el, slot);
+
+    el.innerHTML = `<span class="slot-label">${slot.name}<br>${slot.w}x${slot.h}</span><div class="resize-handle"></div><button class="del-btn" onclick="deleteSlot(${slot.id})">x</button><span class="coord-label"></span>`;
+    updateCoordLabel(el, slot);
+
+    el.addEventListener('mousedown', e => {
+        if (e.target.classList.contains('resize-handle')) return;
+        if (e.target.classList.contains('del-btn')) return;
+        e.preventDefault();
+        selectSlot(slot);
+        const startX = e.clientX, startY = e.clientY;
+        const origX = slot.x, origY = slot.y;
+        el.classList.add('dragging');
+        function onMove(ev) {
+            slot.x = snap(Math.max(0, Math.min(ROOM_W - slot.w, origX + ev.clientX - startX)));
+            slot.y = snap(Math.max(0, Math.min(ROOM_H - slot.h, origY + ev.clientY - startY)));
+            applySlotStyle(el, slot);
+            updateCoordLabel(el, slot);
+            syncProps(slot);
+        }
+        function onUp() {
+            el.classList.remove('dragging');
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            updateInfo(); saveToLocal();
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+
+    el.querySelector('.resize-handle').addEventListener('mousedown', e => {
+        e.preventDefault(); e.stopPropagation();
+        selectSlot(slot);
+        const startX = e.clientX, startY = e.clientY;
+        const origW = slot.w, origH = slot.h;
+        function onMove(ev) {
+            slot.w = snap(Math.max(30, Math.min(ROOM_W - slot.x, origW + ev.clientX - startX)));
+            slot.h = snap(Math.max(30, Math.min(ROOM_H - slot.y, origH + ev.clientY - startY)));
+            applySlotStyle(el, slot);
+            updateCoordLabel(el, slot);
+            el.querySelector('.slot-label').innerHTML = `${slot.name}<br>${slot.w}x${slot.h}`;
+            syncProps(slot);
+        }
+        function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            updateInfo(); saveToLocal();
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+
+    canvas.appendChild(el);
+}
+
+function applySlotStyle(el, slot) {
+    const c = typeColors[slot.type] || typeColors.floor;
+    el.style.left = slot.x + 'px';
+    el.style.top = slot.y + 'px';
+    el.style.width = slot.w + 'px';
+    el.style.height = slot.h + 'px';
+    el.style.borderColor = c;
+    el.style.color = c;
+}
+
+function updateCoordLabel(el, slot) {
+    const lbl = el.querySelector('.coord-label');
+    if (lbl) lbl.textContent = `${slot.x},${slot.y}`;
+}
+
+function selectSlot(slot) {
+    selected = slot;
+    document.querySelectorAll('.drag-slot').forEach(el => {
+        el.classList.toggle('selected', parseInt(el.dataset.id) === slot.id);
+    });
+    syncProps(slot);
+}
+
+function syncProps(slot) {
+    document.getElementById('propName').value = slot.name;
+    document.getElementById('propW').value = slot.w;
+    document.getElementById('propH').value = slot.h;
+    document.getElementById('propX').value = slot.x;
+    document.getElementById('propY').value = slot.y;
+    document.getElementById('propType').value = slot.type;
+}
+
+function updateProp() {
+    if (!selected) return;
+    selected.name = document.getElementById('propName').value;
+    selected.w = Math.max(30, parseInt(document.getElementById('propW').value) || 100);
+    selected.h = Math.max(30, parseInt(document.getElementById('propH').value) || 100);
+    selected.x = Math.max(0, parseInt(document.getElementById('propX').value) || 0);
+    selected.y = Math.max(0, parseInt(document.getElementById('propY').value) || 0);
+    selected.type = document.getElementById('propType').value;
+    const el = document.querySelector(`.drag-slot[data-id="${selected.id}"]`);
+    if (el) {
+        applySlotStyle(el, selected);
+        updateCoordLabel(el, selected);
+        el.querySelector('.slot-label').innerHTML = `${selected.name}<br>${selected.w}x${selected.h}`;
+    }
+    updateInfo(); saveToLocal();
+}
+
+function deleteSlot(id) {
+    slots = slots.filter(s => s.id !== id);
+    const el = document.querySelector(`.drag-slot[data-id="${id}"]`);
+    if (el) el.remove();
+    if (selected && selected.id === id) selected = null;
+    updateInfo(); saveToLocal();
+}
+
+function updateInfo() {
+    const info = document.getElementById('slotInfo');
+    const byType = {};
+    slots.forEach(s => { byType[s.type] = (byType[s.type] || 0) + 1; });
+    let html = `共 <span class="val">${slots.length}</span> 个槽位<br>`;
+    for (const [t, c] of Object.entries(byType)) {
+        html += `${t}: <span class="val">${c}</span>  `;
+    }
+    info.innerHTML = html;
+}
+
+function exportLayout() {
+    const data = slots.map(s => ({ name: s.name, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h }));
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'DIY槽位布局.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+function importLayout(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        try {
+            const data = JSON.parse(ev.target.result);
+            if (!Array.isArray(data)) throw 0;
+            clearAll(true);
+            data.forEach(s => {
+                const id = ++slotId;
+                const slot = { id, name: s.name || '槽位', x: s.x || 0, y: s.y || 0, w: s.w || 100, h: s.h || 100, type: s.type || 'floor' };
+                slots.push(slot);
+                createSlotEl(slot);
+            });
+            updateInfo(); saveToLocal();
+        } catch { alert('文件格式错误'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+}
+
+function clearAll(silent) {
+    if (!silent && !confirm('确定清空所有槽位？')) return;
+    slots = [];
+    selected = null;
+    document.querySelectorAll('.drag-slot').forEach(el => el.remove());
+    updateInfo(); saveToLocal();
+}
+
+function saveToLocal() {
+    localStorage.setItem('shelter_diy_slots', JSON.stringify(slots.map(s => ({ name: s.name, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h }))));
+}
+
+function loadFromLocal() {
+    const raw = localStorage.getItem('shelter_diy_slots');
+    if (!raw) return;
+    try {
+        const data = JSON.parse(raw);
+        data.forEach(s => {
+            const id = ++slotId;
+            const slot = { id, name: s.name, x: s.x, y: s.y, w: s.w, h: s.h, type: s.type };
+            slots.push(slot);
+            createSlotEl(slot);
+        });
+        updateInfo();
+    } catch {}
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Delete' && selected) deleteSlot(selected.id);
+});
+
+canvas.addEventListener('mousedown', e => {
+    if (e.target === canvas || e.target.classList.contains('grid-lines') || e.target.classList.contains('zone-line')) {
+        selected = null;
+        document.querySelectorAll('.drag-slot').forEach(el => el.classList.remove('selected'));
+    }
+});
+
+loadFromLocal();
+</script>
+</body>
+</html>

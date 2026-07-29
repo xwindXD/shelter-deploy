@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Token 用量查询</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #1a1a2e;
+    font-family: -apple-system, sans-serif;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.card {
+    background: #16213e;
+    border-radius: 16px;
+    padding: 32px;
+    width: 420px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+h1 { font-size: 18px; text-align: center; margin-bottom: 20px; color: #e2e8f0; }
+
+.input-group {
+    display: flex; gap: 8px; margin-bottom: 24px;
+}
+.input-group input {
+    flex: 1; padding: 10px 14px; border-radius: 8px;
+    border: 1px solid #334155; background: #0f172a; color: #fff;
+    font-size: 13px;
+}
+.input-group input::placeholder { color: #64748b; }
+.input-group button {
+    padding: 10px 20px; border-radius: 8px; border: none;
+    background: #3b82f6; color: #fff; font-size: 13px;
+    cursor: pointer; font-weight: bold; white-space: nowrap;
+}
+.input-group button:hover { background: #2563eb; }
+.input-group button:disabled { background: #475569; cursor: not-allowed; }
+
+.result { display: none; }
+
+.progress-wrap {
+    background: #0f172a; border-radius: 12px; height: 28px;
+    overflow: hidden; margin-bottom: 20px; position: relative;
+}
+.progress-bar {
+    height: 100%; border-radius: 12px;
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+    transition: width 0.8s ease;
+}
+.progress-bar.warn { background: linear-gradient(90deg, #f59e0b, #d97706); }
+.progress-bar.danger { background: linear-gradient(90deg, #ef4444, #dc2626); }
+.progress-text {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    font-size: 12px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.stat-box {
+    background: #0f172a; border-radius: 10px; padding: 14px;
+    text-align: center;
+}
+.stat-box .label { font-size: 11px; color: #94a3b8; margin-bottom: 6px; }
+.stat-box .value { font-size: 18px; font-weight: bold; }
+.stat-box .value.green { color: #22c55e; }
+.stat-box .value.blue { color: #3b82f6; }
+.stat-box .value.orange { color: #f59e0b; }
+.stat-box .value.red { color: #ef4444; }
+
+.detail {
+    background: #0f172a; border-radius: 10px; padding: 14px;
+    font-size: 12px; color: #94a3b8; line-height: 1.8;
+}
+.detail span { color: #e2e8f0; float: right; }
+
+.error-msg {
+    display: none; background: #451a1a; border: 1px solid #ef4444;
+    border-radius: 8px; padding: 12px; font-size: 12px; color: #fca5a5;
+    text-align: center; margin-bottom: 16px;
+}
+
+.save-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+    font-size: 11px; color: #64748b;
+}
+.save-row input[type="checkbox"] { cursor: pointer; }
+.save-row label { cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="card">
+    <h1>API Token 用量查询</h1>
+
+    <div class="input-group">
+        <input type="password" id="apiKey" placeholder="输入你的 API Key (sk-...)" />
+        <button id="queryBtn" onclick="query()">查询</button>
+    </div>
+
+    <div class="save-row">
+        <input type="checkbox" id="saveKey" checked>
+        <label for="saveKey">记住 Key（存在浏览器本地）</label>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="result" id="result">
+        <div class="progress-wrap">
+            <div class="progress-bar" id="progressBar"></div>
+            <div class="progress-text" id="progressText"></div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="label">剩余额度</div>
+                <div class="value green" id="remaining">-</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">已使用</div>
+                <div class="value orange" id="used">-</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">总额度</div>
+                <div class="value blue" id="total">-</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">使用率</div>
+                <div class="value" id="rate">-</div>
+            </div>
+        </div>
+
+        <div class="detail">
+            <div>账户 <span id="acctName">-</span></div>
+            <div>无限额度 <span id="unlimited">-</span></div>
+            <div>查询时间 <span id="queryTime">-</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const saved = localStorage.getItem('api_key_token');
+if (saved) document.getElementById('apiKey').value = saved;
+
+function fmt(n) {
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + ' B';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + ' M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + ' K';
+    return n.toString();
+}
+
+async function query() {
+    const key = document.getElementById('apiKey').value.trim();
+    if (!key) { showError('请输入 API Key'); return; }
+
+    if (document.getElementById('saveKey').checked) {
+        localStorage.setItem('api_key_token', key);
+    } else {
+        localStorage.removeItem('api_key_token');
+    }
+
+    const btn = document.getElementById('queryBtn');
+    btn.disabled = true; btn.textContent = '查询中...';
+    document.getElementById('errorMsg').style.display = 'none';
+    document.getElementById('result').style.display = 'none';
+
+    try {
+        const r = await fetch('https://ai-gw-cn.uuzu.com/api/usage/token/', {
+            headers: { 'Authorization': 'Bearer ' + key }
+        });
+        const json = await r.json();
+
+        if (!json.code || !json.data) {
+            showError(json.message || '查询失败');
+            return;
+        }
+
+        const d = json.data;
+        const pct = d.total_granted > 0 ? (d.total_used / d.total_granted * 100) : 0;
+
+        document.getElementById('remaining').textContent = fmt(d.total_available);
+        document.getElementById('used').textContent = fmt(d.total_used);
+        document.getElementById('total').textContent = fmt(d.total_granted);
+
+        const rateEl = document.getElementById('rate');
+        rateEl.textContent = pct.toFixed(1) + '%';
+        rateEl.className = 'value ' + (pct < 50 ? 'green' : pct < 80 ? 'orange' : 'red');
+
+        const bar = document.getElementById('progressBar');
+        bar.style.width = pct + '%';
+        bar.className = 'progress-bar' + (pct < 50 ? '' : pct < 80 ? ' warn' : ' danger');
+        document.getElementById('progressText').textContent = '已用 ' + pct.toFixed(1) + '% · 剩余 ' + fmt(d.total_available);
+
+        document.getElementById('acctName').textContent = d.name || '-';
+        document.getElementById('unlimited').textContent = d.unlimited_quota ? '是' : '否';
+        const now = new Date();
+        document.getElementById('queryTime').textContent = now.toLocaleString('zh-CN');
+
+        document.getElementById('result').style.display = 'block';
+    } catch (e) {
+        showError('网络错误: ' + e.message);
+    } finally {
+        btn.disabled = false; btn.textContent = '查询';
+    }
+}
+
+function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+document.getElementById('apiKey').addEventListener('keydown', e => {
+    if (e.key === 'Enter') query();
+});
+</script>
+</body>
+</html>

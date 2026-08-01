@@ -288,7 +288,7 @@ body.nyan .nyan-rainbow { display: block; }
                 <div class="value orange" id="used">-</div>
             </div>
             <div class="stat-box">
-                <div class="label">总额度</div>
+                <div class="label">本月额度</div>
                 <div class="value blue" id="total">-</div>
             </div>
             <div class="stat-box">
@@ -354,7 +354,7 @@ function addToHistory(data) {
         used: data.total_used,
         available: data.total_available,
         granted: data.total_granted,
-        pct: data.total_granted > 0 ? (data.total_used / data.total_granted * 100) : 0,
+        pct: (data.total_used + data.total_available) > 0 ? (data.total_used / (data.total_used + data.total_available) * 100) : 0,
     };
     history.unshift(record);
     if (history.length > 50) history = history.slice(0, 50);
@@ -450,11 +450,12 @@ async function query() {
         }
 
         const d = json.data;
-        const pct = d.total_granted > 0 ? (d.total_used / d.total_granted * 100) : 0;
+        const monthQuota = d.total_used + d.total_available;
+        const pct = monthQuota > 0 ? (d.total_used / monthQuota * 100) : 0;
 
         document.getElementById('remaining').textContent = fmt(d.total_available);
         document.getElementById('used').textContent = fmt(d.total_used);
-        document.getElementById('total').textContent = fmt(d.total_granted);
+        document.getElementById('total').textContent = fmt(monthQuota);
 
         const rateEl = document.getElementById('rate');
         rateEl.textContent = pct.toFixed(1) + '%';
@@ -463,7 +464,7 @@ async function query() {
         const bar = document.getElementById('progressBar');
         bar.style.width = pct + '%';
         bar.className = 'progress-bar' + (pct < 50 ? '' : pct < 80 ? ' warn' : ' danger');
-        document.getElementById('progressText').textContent = '已用 ' + pct.toFixed(1) + '% · 剩余 ' + fmt(d.total_available);
+        document.getElementById('progressText').textContent = '本月已用 ' + pct.toFixed(1) + '% · 剩余 ' + fmt(d.total_available);
 
         document.getElementById('acctName').textContent = d.name || '-';
         document.getElementById('unlimited').textContent = d.unlimited_quota ? '是' : '否';

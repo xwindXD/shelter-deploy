@@ -351,6 +351,7 @@ function addToHistory(data) {
         time: now.toLocaleString('zh-CN'),
         ts: now.getTime(),
         name: data.name || '-',
+        key: data._key || '',
         used: data.total_used,
         available: data.total_available,
         granted: data.total_granted,
@@ -419,7 +420,11 @@ function exportHistory() {
     URL.revokeObjectURL(a.href);
 }
 
-function requery() {
+function requery(idx) {
+    const h = history[idx];
+    if (h && h.key) {
+        document.getElementById('apiKey').value = h.key;
+    }
     query();
 }
 
@@ -450,6 +455,7 @@ async function query() {
         }
 
         const d = json.data;
+        d._key = key;
         const pct = d.total_granted > 0 ? (d.total_used / d.total_granted * 100) : 0;
 
         document.getElementById('remaining').textContent = fmt(d.total_available);

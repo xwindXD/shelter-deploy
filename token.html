@@ -347,18 +347,24 @@ function saveHistory() {
 
 function addToHistory(data) {
     const now = new Date();
+    const key = data._key || '';
+    const existing = history.findIndex(h => h.key === key);
     const record = {
         time: now.toLocaleString('zh-CN'),
         ts: now.getTime(),
         name: data.name || '-',
-        key: data._key || '',
+        key: key,
         used: data.total_used,
         available: data.total_available,
         granted: data.total_granted,
         pct: data.total_granted > 0 ? (data.total_used / data.total_granted * 100) : 0,
     };
-    history.unshift(record);
-    if (history.length > 50) history = history.slice(0, 50);
+    if (existing >= 0) {
+        record.prevUsed = history[existing].used;
+        history[existing] = record;
+    } else {
+        history.push(record);
+    }
     saveHistory();
     renderHistory();
 }
@@ -370,14 +376,15 @@ function renderHistory() {
         return;
     }
     list.innerHTML = history.map((h, i) => {
-        const prev = history[i + 1];
-        const usedDiff = prev ? fmtDiff(h.used, prev.used) : '';
+        const usedDiff = h.prevUsed != null ? fmtDiff(h.used, h.prevUsed) : '';
         const barCls = h.pct < 50 ? 'green' : h.pct < 80 ? 'warn' : 'danger';
+        const maskedKey = h.key ? h.key.slice(0, 6) + '***' + h.key.slice(-4) : '';
         return `<div class="h-item">
             <div class="h-top">
                 <div>
                     <span class="h-time">${h.time}</span>
                     <span class="h-name">${h.name}</span>
+                    <span style="font-size:10px;color:#475569;margin-left:6px">${maskedKey}</span>
                 </div>
                 <div class="h-btns">
                     <button class="h-btn h-btn-query" onclick="requery(${i})">查询</button>

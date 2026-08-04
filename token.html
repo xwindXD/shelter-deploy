@@ -44,9 +44,35 @@ h2 { font-size: 14px; color: #e2e8f0; margin-bottom: 12px; display: flex; align-
 
 .result { display: none; }
 
+.progress-section { position: relative; margin-bottom: 16px; }
+.progress-section .bar-label {
+    font-size: 11px; color: #94a3b8; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+}
+.info-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #475569; color: #e2e8f0; font-size: 10px; font-weight: bold;
+    cursor: pointer; border: none; line-height: 1; position: relative;
+    flex-shrink: 0;
+}
+.info-btn:hover { background: #64748b; }
+.info-bubble {
+    display: none; position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1e293b; border: 1px solid #475569; border-radius: 8px;
+    padding: 10px 14px; font-size: 11px; color: #e2e8f0; line-height: 1.6;
+    white-space: nowrap; z-index: 10;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.info-bubble::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 6px solid transparent; border-top-color: #475569;
+}
+.info-btn.active .info-bubble { display: block; }
+
 .progress-wrap {
     background: #0f172a; border-radius: 12px; height: 28px;
-    overflow: hidden; margin-bottom: 20px; position: relative;
+    overflow: hidden; position: relative;
 }
 .progress-bar {
     height: 100%; border-radius: 12px;
@@ -191,6 +217,12 @@ body.nyan .stat-box .value.blue { color: #1565c0; }
 body.nyan .stat-box .value.orange { color: #e65100; }
 body.nyan .stat-box .value.red { color: #c62828; }
 
+body.nyan .info-btn { background: #f8bbd0; color: #ad1457; }
+body.nyan .info-btn:hover { background: #f48fb1; }
+body.nyan .info-bubble { background: rgba(255,255,255,0.95); border-color: #f8bbd0; color: #333; }
+body.nyan .info-bubble::after { border-top-color: #f8bbd0; }
+body.nyan .bar-label { color: #7b1fa2; }
+
 body.nyan .progress-wrap { background: rgba(248,187,208,0.3); }
 body.nyan .progress-bar { background: linear-gradient(90deg, #ff6f91, #ff9671, #ffc75f, #9be15d, #00d2fc, #c888e5); background-size: 300% 100%; animation: nyanBar 2s linear infinite; }
 body.nyan .progress-bar.warn { background: linear-gradient(90deg, #ff6f91, #ff9671, #ffc75f, #9be15d, #00d2fc, #c888e5); background-size: 300% 100%; animation: nyanBar 2s linear infinite; }
@@ -273,9 +305,30 @@ body.nyan .nyan-rainbow { display: block; }
     <div class="error-msg" id="errorMsg"></div>
 
     <div class="result" id="result">
-        <div class="progress-wrap">
-            <div class="progress-bar" id="progressBar"></div>
-            <div class="progress-text" id="progressText"></div>
+        <div class="progress-section">
+            <div class="bar-label">
+                总额度进度
+                <button class="info-btn" onclick="toggleInfo(this)">!
+                    <div class="info-bubble">公式: 已使用 / 总额度 × 100%<br>即 total_used / total_granted<br>反映累计总额度的消耗比例</div>
+                </button>
+            </div>
+            <div class="progress-wrap">
+                <div class="progress-bar" id="progressBar"></div>
+                <div class="progress-text" id="progressText"></div>
+            </div>
+        </div>
+
+        <div class="progress-section">
+            <div class="bar-label">
+                月度额度进度
+                <button class="info-btn" onclick="toggleInfo(this)">!
+                    <div class="info-bubble">公式: (1B - 剩余额度) / 1B × 100%<br>每月1号刷新，固定总量 1,000,000,000<br>反映当月额度的消耗情况</div>
+                </button>
+            </div>
+            <div class="progress-wrap">
+                <div class="progress-bar" id="monthlyBar"></div>
+                <div class="progress-text" id="monthlyText"></div>
+            </div>
         </div>
 
         <div class="stats">
@@ -368,6 +421,17 @@ function addToHistory(data) {
     saveHistory();
     renderHistory();
 }
+
+function toggleInfo(btn) {
+    const wasActive = btn.classList.contains('active');
+    document.querySelectorAll('.info-btn.active').forEach(b => b.classList.remove('active'));
+    if (!wasActive) btn.classList.add('active');
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('.info-btn')) {
+        document.querySelectorAll('.info-btn.active').forEach(b => b.classList.remove('active'));
+    }
+});
 
 function renderHistory() {
     const list = document.getElementById('historyList');
@@ -477,6 +541,14 @@ async function query() {
         bar.style.width = pct + '%';
         bar.className = 'progress-bar' + (pct < 50 ? '' : pct < 80 ? ' warn' : ' danger');
         document.getElementById('progressText').textContent = '已用 ' + pct.toFixed(1) + '% · 剩余 ' + fmt(d.total_available);
+
+        const MONTHLY_TOTAL = 1e9;
+        const monthlyUsed = MONTHLY_TOTAL - d.total_available;
+        const monthlyPct = Math.max(0, Math.min(100, monthlyUsed / MONTHLY_TOTAL * 100));
+        const mBar = document.getElementById('monthlyBar');
+        mBar.style.width = monthlyPct + '%';
+        mBar.className = 'progress-bar' + (monthlyPct < 50 ? '' : monthlyPct < 80 ? ' warn' : ' danger');
+        document.getElementById('monthlyText').textContent = '已用 ' + monthlyPct.toFixed(1) + '% · 剩余 ' + fmt(d.total_available);
 
         document.getElementById('acctName').textContent = d.name || '-';
         document.getElementById('unlimited').textContent = d.unlimited_quota ? '是' : '否';

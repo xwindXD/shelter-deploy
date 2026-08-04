@@ -51,41 +51,127 @@ body { background: #1a1a1a; font-family: -apple-system, sans-serif; color: #fff;
 .canvas-area h1 { font-size: 16px; margin-bottom: 8px; }
 .canvas-area .hint { font-size: 11px; color: #888; margin-bottom: 16px; }
 
+.size-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    font-size: 12px; color: #ccc;
+}
+.size-row input {
+    width: 70px; padding: 5px 8px; background: #2a2a2a; border: 1px solid #555;
+    border-radius: 6px; color: #fff; font-size: 12px; text-align: center;
+}
+.size-row button {
+    padding: 5px 14px; border: none; border-radius: 6px;
+    background: #f0c060; color: #1a1a1a; font-size: 11px;
+    cursor: pointer; font-weight: bold;
+}
+.size-row button:hover { background: #e0b050; }
+
+/* ======== 房间画布 ======== */
 .room-canvas {
-    width: 750px; height: 420px; position: relative;
-    background: linear-gradient(180deg, #f5e6d0, #f0dcc0, #e8d0b0, #d4b896);
-    border: 2px solid #5a3d1a;
+    position: relative;
+    background: #333;
+    border: 2px solid #666;
+    overflow: hidden;
 }
 
-.grid-lines {
+.room-structure {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 0;
+}
+.rs-panel {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+}
+
+/* === 默认灰度示意（纯色无纹理） === */
+.rs-back-wall { background: #e8e8e8; }
+.rs-ceiling { background: #888; }
+.rs-floor { background: #ccc; }
+.rs-wall-left { background: #bbb; }
+.rs-wall-right { background: #bbb; }
+.rs-shadows {
+    background:
+        linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 8%),
+        linear-gradient(0deg, rgba(0,0,0,0.1) 0%, transparent 6%),
+        linear-gradient(90deg, rgba(0,0,0,0.12) 0%, transparent 5%),
+        linear-gradient(270deg, rgba(0,0,0,0.12) 0%, transparent 5%);
+}
+
+/* === 彩色预览 === */
+.room-canvas.colorful .rs-back-wall {
+    background: repeating-linear-gradient(90deg,
+        #e6d4bc 0px, #e6d4bc 28px,
+        #d8c4a8 28px, #d8c4a8 56px
+    );
+}
+.room-canvas.colorful .rs-ceiling {
+    background: linear-gradient(180deg, #5a4030, #4a3020);
+}
+.room-canvas.colorful .rs-floor {
+    background-color: #c8a0b0;
+    background-image:
+        linear-gradient(45deg, #8a5a6a 25%, transparent 25%, transparent 75%, #8a5a6a 75%),
+        linear-gradient(45deg, #8a5a6a 25%, transparent 25%, transparent 75%, #8a5a6a 75%);
+    background-size: 46px 46px;
+    background-position: 0 0, 23px 23px;
+}
+.room-canvas.colorful .rs-wall-left {
+    background: repeating-linear-gradient(90deg,
+        #c8b8a0 0px, #c8b8a0 10px,
+        #b8a890 10px, #b8a890 20px
+    );
+}
+.room-canvas.colorful .rs-wall-right {
+    background: repeating-linear-gradient(90deg,
+        #c8b8a0 0px, #c8b8a0 10px,
+        #b8a890 10px, #b8a890 20px
+    );
+}
+.room-canvas.colorful { border-color: #5a3d1a; }
+.room-canvas.colorful .rs-edges line { stroke: #8a7a6a; }
+.room-canvas.colorful .rs-edges rect { stroke: #a8987c; }
+
+/* 边线 SVG */
+.rs-edges {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     pointer-events: none; z-index: 1;
 }
+.rs-edges rect { fill: none; stroke: #999; stroke-width: 1.5; }
+.rs-edges line { stroke: #888; stroke-width: 1.5; }
 
+/* 网格 */
+.grid-lines {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 2;
+}
+
+/* 区域线 */
 .zone-line {
     position: absolute; left: 0; width: 100%;
-    border-top: 1px dashed rgba(150,120,80,0.5);
+    border-top: 1px dashed rgba(255,200,100,0.4);
     pointer-events: none; z-index: 2;
 }
 .zone-line span {
-    position: absolute; left: 6px; top: 2px;
-    font-size: 10px; color: rgba(150,120,80,0.7);
+    position: absolute; top: 2px;
+    font-size: 10px; color: rgba(255,200,100,0.6);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
 }
 
+/* ======== 可拖拽槽位 ======== */
 .drag-slot {
     position: absolute; border: 2px dashed rgba(100,180,100,0.7);
     border-radius: 6px; cursor: move; z-index: 10;
     display: flex; align-items: center; justify-content: center;
     font-size: 10px; color: rgba(100,180,100,0.9); text-align: center;
     background: rgba(100,180,100,0.08); user-select: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
 }
 .drag-slot:hover { border-color: rgba(100,255,100,0.9); background: rgba(100,255,100,0.15); }
-.drag-slot.selected { border-color: #f0c060; border-style: solid; background: rgba(240,192,96,0.15); color: #f0c060; z-index: 20; }
+.drag-slot.selected { border-color: #00e5ff; border-style: solid; background: rgba(0,229,255,0.12); color: #00e5ff; z-index: 20; box-shadow: 0 0 12px rgba(0,229,255,0.3); }
 .drag-slot.dragging { opacity: 0.7; }
 
 .resize-handle {
     position: absolute; right: -4px; bottom: -4px;
-    width: 10px; height: 10px; background: #f0c060;
+    width: 10px; height: 10px; background: #00e5ff;
     border-radius: 2px; cursor: nwse-resize; z-index: 30;
 }
 
@@ -101,6 +187,7 @@ body { background: #1a1a1a; font-family: -apple-system, sans-serif; color: #fff;
     position: absolute; bottom: 2px; right: 4px;
     font-size: 8px; color: rgba(100,180,100,0.5); pointer-events: none;
 }
+.drag-slot.selected .coord-label { color: rgba(0,229,255,0.5); }
 </style>
 </head>
 <body>
@@ -116,7 +203,10 @@ body { background: #1a1a1a; font-family: -apple-system, sans-serif; color: #fff;
     <button class="tb-btn" onclick="addSlot('绿植', 80, 120, 'floor')">绿植 <span class="size">80x120</span></button>
     <button class="tb-btn" onclick="addSlot('地垫', 300, 50, 'ground')">地垫 <span class="size">300x50</span></button>
     <button class="tb-btn" onclick="addSlot('门装饰', 60, 200, 'door')">门装饰 <span class="size">60x200</span></button>
-    <button class="tb-btn" onclick="addSlot('自定义', 100, 100, 'floor')">自定义尺寸 <span class="size">100x100</span></button>
+    <div class="tb-row" style="margin-top:6px">
+        <label>名称</label><input id="customName" value="自定义" style="width:100px">
+    </div>
+    <button class="tb-btn" onclick="addSlot(document.getElementById('customName').value||'自定义', 100, 100, 'floor')">添加自定义槽位 <span class="size">100x100</span></button>
 
     <div class="tb-section">
         <h3>选中槽位属性</h3>
@@ -140,6 +230,7 @@ body { background: #1a1a1a; font-family: -apple-system, sans-serif; color: #fff;
         <label class="tb-check"><input type="checkbox" id="showGrid" checked onchange="toggleGrid()">显示网格 (100px)</label>
         <label class="tb-check"><input type="checkbox" id="snapGrid" checked>吸附网格 (10px)</label>
         <label class="tb-check"><input type="checkbox" id="showZones" checked onchange="toggleZones()">显示区域线</label>
+        <label class="tb-check"><input type="checkbox" id="showColor" onchange="toggleColor()">填充颜色预览</label>
     </div>
 
     <div class="tb-section">
@@ -157,56 +248,136 @@ body { background: #1a1a1a; font-family: -apple-system, sans-serif; color: #fff;
 </div>
 
 <div class="canvas-area">
-    <h1>DIY房间槽位布局 (750 x 420)</h1>
-    <div class="hint">点击左侧按钮添加槽位 | 拖拽移动 | 右下角拖拽调整大小 | 点选后可在左侧修改属性 | Delete键删除</div>
+    <h1>DIY房间槽位布局 <span id="roomSizeLabel">(750 x 420)</span></h1>
+    <div class="size-row">
+        <label>宽</label><input id="roomW" type="number" value="750" min="200" max="2000">
+        <label>x 高</label><input id="roomH" type="number" value="420" min="150" max="1200">
+        <button onclick="applyRoomSize()">应用尺寸</button>
+    </div>
+    <div class="size-row">
+        <label>侧墙</label><input id="perspSd" type="number" value="60" min="0" max="300" oninput="updateRoomGeometry()">
+        <label>天花板</label><input id="perspCd" type="number" value="40" min="0" max="300" oninput="updateRoomGeometry()">
+        <label>地面</label><input id="perspFd" type="number" value="90" min="0" max="300" oninput="updateRoomGeometry()">
+    </div>
+    <div class="hint">点击左侧按钮添加槽位 | 拖拽移动 | 右下角调整大小 | 点选后左侧修改属性 | Delete键删除</div>
     <div class="room-canvas" id="roomCanvas">
+        <div class="room-structure">
+            <div class="rs-panel rs-back-wall"></div>
+            <div class="rs-panel rs-ceiling"></div>
+            <div class="rs-panel rs-floor"></div>
+            <div class="rs-panel rs-wall-left"></div>
+            <div class="rs-panel rs-wall-right"></div>
+            <div class="rs-panel rs-shadows"></div>
+        </div>
+        <svg class="rs-edges" id="edgesSvg"></svg>
         <svg class="grid-lines" id="gridSvg"></svg>
-        <div class="zone-line" style="top:60px;"><span>天花板 60px</span></div>
-        <div class="zone-line" style="top:200px;"><span>墙面 200px</span></div>
-        <div class="zone-line" style="top:360px;"><span>地面 360px</span></div>
+        <div class="zone-line" id="zoneTop"><span style="left:70px;">天花板 ▼</span></div>
+        <div class="zone-line" id="zoneBot"><span style="left:70px;">地面 ▼</span></div>
     </div>
 </div>
 
 <script>
-const canvas = document.getElementById('roomCanvas');
-const ROOM_W = 750, ROOM_H = 420;
+const canvasEl = document.getElementById('roomCanvas');
+let ROOM_W = 750, ROOM_H = 420;
 let slots = [];
 let selected = null;
 let slotId = 0;
 
 const typeColors = {
-    ceiling: 'rgba(100,200,255,0.7)',
-    wall: 'rgba(200,100,255,0.7)',
-    floor: 'rgba(100,200,100,0.7)',
-    ground: 'rgba(200,180,100,0.7)',
-    door: 'rgba(255,150,100,0.7)',
+    ceiling: 'rgba(100,200,255,0.8)',
+    wall: 'rgba(200,100,255,0.8)',
+    floor: 'rgba(100,200,100,0.8)',
+    ground: 'rgba(200,180,100,0.8)',
+    door: 'rgba(255,150,100,0.8)',
 };
+
+function getPerspective() {
+    const sd = Math.max(0, parseInt(document.getElementById('perspSd').value) || 0);
+    const cd = Math.max(0, parseInt(document.getElementById('perspCd').value) || 0);
+    const fd = Math.max(0, parseInt(document.getElementById('perspFd').value) || 0);
+    return { sd, cd, fd };
+}
+
+function updateRoomGeometry() {
+    canvasEl.style.width = ROOM_W + 'px';
+    canvasEl.style.height = ROOM_H + 'px';
+    const { sd, cd, fd } = getPerspective();
+    const w = ROOM_W, h = ROOM_H;
+
+    document.querySelector('.rs-back-wall').style.clipPath =
+        `polygon(${sd}px ${cd}px, ${w-sd}px ${cd}px, ${w-sd}px ${h-fd}px, ${sd}px ${h-fd}px)`;
+    document.querySelector('.rs-ceiling').style.clipPath =
+        `polygon(0 0, ${w}px 0, ${w-sd}px ${cd}px, ${sd}px ${cd}px)`;
+    document.querySelector('.rs-floor').style.clipPath =
+        `polygon(${sd}px ${h-fd}px, ${w-sd}px ${h-fd}px, ${w}px ${h}px, 0 ${h}px)`;
+    document.querySelector('.rs-wall-left').style.clipPath =
+        `polygon(0 0, ${sd}px ${cd}px, ${sd}px ${h-fd}px, 0 ${h}px)`;
+    document.querySelector('.rs-wall-right').style.clipPath =
+        `polygon(${w}px 0, ${w-sd}px ${cd}px, ${w-sd}px ${h-fd}px, ${w}px ${h}px)`;
+    document.querySelector('.rs-shadows').style.clipPath =
+        `polygon(${sd}px ${cd}px, ${w-sd}px ${cd}px, ${w-sd}px ${h-fd}px, ${sd}px ${h-fd}px)`;
+
+    const edges = document.getElementById('edgesSvg');
+    edges.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    edges.innerHTML =
+        `<rect x="${sd}" y="${cd}" width="${w-2*sd}" height="${h-cd-fd}"/>` +
+        `<line x1="0" y1="0" x2="${sd}" y2="${cd}"/>` +
+        `<line x1="${w}" y1="0" x2="${w-sd}" y2="${cd}"/>` +
+        `<line x1="0" y1="${h}" x2="${sd}" y2="${h-fd}"/>` +
+        `<line x1="${w}" y1="${h}" x2="${w-sd}" y2="${h-fd}"/>`;
+
+    document.getElementById('zoneTop').style.top = cd + 'px';
+    document.getElementById('zoneBot').style.top = (h - fd) + 'px';
+
+    drawGrid();
+    document.getElementById('roomSizeLabel').textContent = `(${w} x ${h})`;
+}
 
 function drawGrid() {
     const svg = document.getElementById('gridSvg');
+    svg.setAttribute('viewBox', `0 0 ${ROOM_W} ${ROOM_H}`);
     let lines = '';
-    for (let x = 0; x <= ROOM_W; x += 100) {
-        lines += `<line x1="${x}" y1="0" x2="${x}" y2="${ROOM_H}" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>`;
-    }
-    for (let y = 0; y <= ROOM_H; y += 100) {
-        lines += `<line x1="0" y1="${y}" x2="${ROOM_W}" y2="${y}" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>`;
-    }
+    for (let x = 0; x <= ROOM_W; x += 100)
+        lines += `<line x1="${x}" y1="0" x2="${x}" y2="${ROOM_H}" stroke="rgba(0,0,0,0.08)" stroke-width="1"/>`;
+    for (let y = 0; y <= ROOM_H; y += 100)
+        lines += `<line x1="0" y1="${y}" x2="${ROOM_W}" y2="${y}" stroke="rgba(0,0,0,0.08)" stroke-width="1"/>`;
     svg.innerHTML = lines;
 }
-drawGrid();
+
+function applyRoomSize() {
+    const w = Math.max(200, Math.min(2000, parseInt(document.getElementById('roomW').value) || 750));
+    const h = Math.max(150, Math.min(1200, parseInt(document.getElementById('roomH').value) || 420));
+    document.getElementById('roomW').value = w;
+    document.getElementById('roomH').value = h;
+    ROOM_W = w; ROOM_H = h;
+    document.getElementById('perspSd').value = Math.round(w * 0.08);
+    document.getElementById('perspCd').value = Math.round(h * 0.095);
+    document.getElementById('perspFd').value = Math.round(h * 0.214);
+    updateRoomGeometry();
+}
 
 function toggleGrid() { document.getElementById('gridSvg').style.display = document.getElementById('showGrid').checked ? '' : 'none'; }
 function toggleZones() {
     const show = document.getElementById('showZones').checked;
     document.querySelectorAll('.zone-line').forEach(z => z.style.display = show ? '' : 'none');
 }
+function toggleColor() {
+    canvasEl.classList.toggle('colorful', document.getElementById('showColor').checked);
+}
 
 function snap(v) { return document.getElementById('snapGrid').checked ? Math.round(v / 10) * 10 : v; }
 
 function addSlot(name, w, h, type) {
     const id = ++slotId;
-    const x = snap(Math.random() * (ROOM_W - w));
-    const y = snap(type === 'ceiling' ? 10 : type === 'wall' ? 80 : type === 'ground' ? 365 : 220);
+    const { sd, cd, fd } = getPerspective();
+    const x = snap(sd + Math.random() * (ROOM_W - 2*sd - w));
+    let y;
+    if (type === 'ceiling') y = snap(Math.random() * (cd - 10));
+    else if (type === 'wall') y = snap(cd + 10 + Math.random() * 80);
+    else if (type === 'ground') y = snap(ROOM_H - fd + 10 + Math.random() * (fd - 20 - h));
+    else if (type === 'door') y = snap(cd + 50 + Math.random() * 60);
+    else y = snap(cd + 80 + Math.random() * (ROOM_H - fd - cd - 80 - h));
+    y = Math.max(0, Math.min(ROOM_H - h, y));
     const slot = { id, name, x, y, w, h, type };
     slots.push(slot);
     createSlotEl(slot);
@@ -271,7 +442,7 @@ function createSlotEl(slot) {
         document.addEventListener('mouseup', onUp);
     });
 
-    canvas.appendChild(el);
+    canvasEl.appendChild(el);
 }
 
 function applySlotStyle(el, slot) {
@@ -343,11 +514,11 @@ function updateInfo() {
 }
 
 function exportLayout() {
-    const data = slots.map(s => ({ name: s.name, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h }));
+    const data = { roomW: ROOM_W, roomH: ROOM_H, slots: slots.map(s => ({ name: s.name, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h })) };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'DIY槽位布局.json';
+    a.download = 'DIY槽位布局_' + ROOM_W + 'x' + ROOM_H + '.json';
     a.click();
     URL.revokeObjectURL(a.href);
 }
@@ -358,10 +529,21 @@ function importLayout(e) {
     const reader = new FileReader();
     reader.onload = function(ev) {
         try {
-            const data = JSON.parse(ev.target.result);
-            if (!Array.isArray(data)) throw 0;
+            let data = JSON.parse(ev.target.result);
+            let arr;
+            if (Array.isArray(data)) {
+                arr = data;
+            } else if (data.slots) {
+                arr = data.slots;
+                if (data.roomW && data.roomH) {
+                    ROOM_W = data.roomW; ROOM_H = data.roomH;
+                    document.getElementById('roomW').value = ROOM_W;
+                    document.getElementById('roomH').value = ROOM_H;
+                    updateRoomGeometry();
+                }
+            } else throw 0;
             clearAll(true);
-            data.forEach(s => {
+            arr.forEach(s => {
                 const id = ++slotId;
                 const slot = { id, name: s.name || '槽位', x: s.x || 0, y: s.y || 0, w: s.w || 100, h: s.h || 100, type: s.type || 'floor' };
                 slots.push(slot);
@@ -383,15 +565,26 @@ function clearAll(silent) {
 }
 
 function saveToLocal() {
-    localStorage.setItem('shelter_diy_slots', JSON.stringify(slots.map(s => ({ name: s.name, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h }))));
+    localStorage.setItem('shelter_diy_slots', JSON.stringify({ roomW: ROOM_W, roomH: ROOM_H, slots: slots.map(s => ({ name: s.name, type: s.type, x: s.x, y: s.y, w: s.w, h: s.h })) }));
 }
 
 function loadFromLocal() {
     const raw = localStorage.getItem('shelter_diy_slots');
     if (!raw) return;
     try {
-        const data = JSON.parse(raw);
-        data.forEach(s => {
+        let data = JSON.parse(raw);
+        let arr;
+        if (Array.isArray(data)) {
+            arr = data;
+        } else if (data.slots) {
+            arr = data.slots;
+            if (data.roomW && data.roomH) {
+                ROOM_W = data.roomW; ROOM_H = data.roomH;
+                document.getElementById('roomW').value = ROOM_W;
+                document.getElementById('roomH').value = ROOM_H;
+            }
+        } else return;
+        arr.forEach(s => {
             const id = ++slotId;
             const slot = { id, name: s.name, x: s.x, y: s.y, w: s.w, h: s.h, type: s.type };
             slots.push(slot);
@@ -405,13 +598,14 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Delete' && selected) deleteSlot(selected.id);
 });
 
-canvas.addEventListener('mousedown', e => {
-    if (e.target === canvas || e.target.classList.contains('grid-lines') || e.target.classList.contains('zone-line')) {
+canvasEl.addEventListener('mousedown', e => {
+    if (e.target === canvasEl || e.target.closest('.room-structure') || e.target.closest('.rs-edges') || e.target.closest('.grid-lines') || e.target.classList.contains('zone-line')) {
         selected = null;
         document.querySelectorAll('.drag-slot').forEach(el => el.classList.remove('selected'));
     }
 });
 
+updateRoomGeometry();
 loadFromLocal();
 </script>
 </body>

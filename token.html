@@ -441,7 +441,7 @@ function renderHistory() {
     }
     list.innerHTML = history.map((h, i) => {
         const usedDiff = h.prevUsed != null ? fmtDiff(h.used, h.prevUsed) : '';
-        const monthPct = (h.used + h.available) > 0 ? (h.used / (h.used + h.available) * 100) : 0;
+        const monthPct = Math.max(0, Math.min(100, (1e9 - h.available) / 1e9 * 100));
         const barCls = monthPct < 50 ? 'green' : monthPct < 80 ? 'warn' : 'danger';
         const maskedKey = h.key ? h.key.slice(0, 6) + '***' + h.key.slice(-4) : '';
         return `<div class="h-item">

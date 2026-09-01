@@ -535,8 +535,8 @@ async function query() {
         document.getElementById('total').textContent = fmt(d.total_granted);
 
         const rateEl = document.getElementById('rate');
-        rateEl.textContent = pct.toFixed(1) + '%';
-        rateEl.className = 'value ' + (pct < 50 ? 'green' : pct < 80 ? 'orange' : 'red');
+        rateEl.textContent = monthlyPct.toFixed(1) + '%';
+        rateEl.className = 'value ' + (monthlyPct < 50 ? 'green' : monthlyPct < 80 ? 'orange' : 'red');
 
         const bar = document.getElementById('progressBar');
         bar.style.width = pct + '%';

@@ -529,6 +529,9 @@ async function query() {
         const d = json.data;
         d._key = key;
         const pct = d.total_granted > 0 ? (d.total_used / d.total_granted * 100) : 0;
+        const MONTHLY_TOTAL = 1e9;
+        const monthlyUsed = MONTHLY_TOTAL - d.total_available;
+        const monthlyPct = Math.max(0, Math.min(100, monthlyUsed / MONTHLY_TOTAL * 100));
 
         document.getElementById('remaining').textContent = fmt(d.total_available);
         document.getElementById('used').textContent = fmt(d.total_used);
@@ -543,9 +546,6 @@ async function query() {
         bar.className = 'progress-bar' + (pct < 50 ? '' : pct < 80 ? ' warn' : ' danger');
         document.getElementById('progressText').textContent = '已用 ' + pct.toFixed(1) + '% · 剩余 ' + fmt(d.total_available);
 
-        const MONTHLY_TOTAL = 1e9;
-        const monthlyUsed = MONTHLY_TOTAL - d.total_available;
-        const monthlyPct = Math.max(0, Math.min(100, monthlyUsed / MONTHLY_TOTAL * 100));
         const mBar = document.getElementById('monthlyBar');
         mBar.style.width = monthlyPct + '%';
         mBar.className = 'progress-bar' + (monthlyPct < 50 ? '' : monthlyPct < 80 ? ' warn' : ' danger');

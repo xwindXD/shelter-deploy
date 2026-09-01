@@ -441,7 +441,8 @@ function renderHistory() {
     }
     list.innerHTML = history.map((h, i) => {
         const usedDiff = h.prevUsed != null ? fmtDiff(h.used, h.prevUsed) : '';
-        const barCls = h.pct < 50 ? 'green' : h.pct < 80 ? 'warn' : 'danger';
+        const monthPct = (h.used + h.available) > 0 ? (h.used / (h.used + h.available) * 100) : 0;
+        const barCls = monthPct < 50 ? 'green' : monthPct < 80 ? 'warn' : 'danger';
         const maskedKey = h.key ? h.key.slice(0, 6) + '***' + h.key.slice(-4) : '';
         return `<div class="h-item">
             <div class="h-top">
@@ -456,8 +457,8 @@ function renderHistory() {
                 </div>
             </div>
             <div class="h-bars">
-                <div class="h-mini-bar"><div class="h-mini-fill ${barCls}" style="width:${h.pct}%"></div></div>
-                <span style="font-size:11px;color:#94a3b8;min-width:45px;text-align:right">${h.pct.toFixed(1)}%</span>
+                <div class="h-mini-bar"><div class="h-mini-fill ${barCls}" style="width:${monthPct}%"></div></div>
+                <span style="font-size:11px;color:#94a3b8;min-width:45px;text-align:right">${monthPct.toFixed(1)}%</span>
             </div>
             <div class="h-stats" style="margin-top:6px">
                 <div>已用 <span class="hs-val">${fmt(h.used)}</span>${usedDiff}</div>

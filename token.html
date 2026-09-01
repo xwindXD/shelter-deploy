@@ -410,7 +410,7 @@ function addToHistory(data) {
         used: data.total_used,
         available: data.total_available,
         granted: data.total_granted,
-        pct: data.total_granted > 0 ? (data.total_used / data.total_granted * 100) : 0,
+        pct: (data.total_used + data.total_available) > 0 ? (data.total_used / (data.total_used + data.total_available) * 100) : 0,
     };
     if (existing >= 0) {
         record.prevUsed = history[existing].used;
